@@ -62,6 +62,40 @@ inline double dist(double x1, double y1, double x2, double y2) {
 }
 
 /**
+ * Computes a vector of LandmarkObs based only on near landmarks to the vehicle.
+ * @param (x, y) Particle x and y position.
+ * @param (range) max allowed distance for a landmark to be considered.
+ * @param (map) Map of landmarks.
+ * @output Vector of landmarks
+ */
+inline std::vector<LandmarkObs> getNearLandmarks(const double x, const double y,
+                                                 const double range,
+                                                 const Map& map) {
+  std::vector<LandmarkObs> result;
+  for (const auto landmark : map.landmark_list) {
+    const double distance = dist(x, y, landmark.x_f, landmark.y_f);
+    if (distance < range) {
+      result.emplace_back(landmark.id_i, landmark.x_f, landmark.y_f);
+    }
+  }
+  return result;
+}
+
+/**
+ * Computes a vector of LandmarkObs based only on near landmarks to the vehicle.
+ * @param (observation) observation in vehicle frame.
+ * @param (px, py, pth) Particle pose: x, y and theta.
+ * @output Transformed observation to vehicle frame.
+ */
+inline LandmarkObs transformObservationToMap(const LandmarkObs& observation,
+                                             const double px, const double py,
+                                             const double pth) {
+  const double mx = cos(pth) * observation.x - sin(pth) * observation.y + px;
+  const double my = sin(pth) * observation.x + cos(pth) * observation.y + py;
+  return LandmarkObs(observation.id, mx, my);
+}
+
+/**
  * Computes the error between ground truth and particle filter data.
  * @param (gt_x, gt_y, gt_theta) x, y and theta of ground truth
  * @param (pf_x, pf_y, pf_theta) x, y and theta of particle filter

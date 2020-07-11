@@ -99,19 +99,34 @@ void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted,
 void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                                    const vector<LandmarkObs>& observations,
                                    const Map& map_landmarks) {
-  /**
-   * TODO: Update the weights of each particle using a mult-variate Gaussian
-   *   distribution. You can read more about this distribution here:
-   *   https://en.wikipedia.org/wiki/Multivariate_normal_distribution
-   * NOTE: The observations are given in the VEHICLE'S coordinate system.
-   *   Your particles are located according to the MAP'S coordinate system.
-   *   You will need to transform between the two systems. Keep in mind that
-   *   this transformation requires both rotation AND translation (but no
-   * scaling). The following is a good resource for the theory:
-   *   https://www.willamette.edu/~gorr/classes/GeneralGraphics/Transforms/transforms2d.htm
-   *   and the following is a good resource for the actual equation to implement
-   *   (look at equation 3.33) http://planning.cs.uiuc.edu/node99.html
-   */
+  const double sigma_x = std_landmark[0];
+  const double sigma_y = std_landmark[1];
+
+  for (auto particle : particles) {
+    const double p_x = particle.x;
+    const double p_y = particle.y;
+    const double p_th = particle.theta;
+
+    // Create list of predicted landmarks in sensor range (/map frame).
+    vector<LandmarkObs> predicted_observations =
+        getNearLandmarks(p_x, p_y, sensor_range, map_landmarks);
+
+    // Transform observations from /car to /map frames.
+    vector<LandmarkObs> map_observations;
+    std::transform(
+        observations.begin(), observations.end(),
+        std::back_inserter(map_observations),
+        [p_x, p_y, p_th](const LandmarkObs& observation) -> LandmarkObs {
+          return transformObservationToMap(observation, p_x, p_y, p_th);
+        });
+
+    // associate observations to given landmarks.
+    dataAssociation(predicted_observations, map_observations);
+
+    // update weight using multivariate gaussian distribution
+    // normalize weigths to [0, 1] range.
+    particle.weight = 0;
+  }
 }
 
 void ParticleFilter::resample() {
