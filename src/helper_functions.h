@@ -77,7 +77,7 @@ inline std::vector<LandmarkObs> getNearLandmarks(const double x, const double y,
                                                  const double range,
                                                  const Map& map) {
   std::vector<LandmarkObs> result;
-  for (const auto landmark : map.landmark_list) {
+  for (const auto& landmark : map.landmark_list) {
     const double distance = dist(x, y, landmark.x_f, landmark.y_f);
     if (distance < range) {
       result.emplace_back(landmark.id_i, landmark.x_f, landmark.y_f);

@@ -82,7 +82,7 @@ void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted,
     int nearest_id = -1;
     const double ox = observation.x;
     const double oy = observation.y;
-    for (const auto landmark : predicted) {
+    for (const auto& landmark : predicted) {
       const double distance = dist(ox, oy, landmark.x, landmark.y);
       if (distance < nearest_distance) {
         nearest_distance = distance;
@@ -116,12 +116,10 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
     // Transform observations from /car to /map frames.
     vector<LandmarkObs> map_observations;
-    std::transform(
-        observations.begin(), observations.end(),
-        std::back_inserter(map_observations),
-        [p_x, p_y, p_th](const LandmarkObs& observation) -> LandmarkObs {
-          return transformObservationToMap(observation, p_x, p_y, p_th);
-        });
+    for (const auto& observation : observations) {
+      map_observations.emplace_back(
+          transformObservationToMap(observation, p_x, p_y, p_th));
+    }
 
     // associate observations to given landmarks.
     dataAssociation(predicted_observations, map_observations);
