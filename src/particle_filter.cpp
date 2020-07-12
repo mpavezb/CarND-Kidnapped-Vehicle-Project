@@ -46,32 +46,46 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
 
 void ParticleFilter::prediction(double delta_t, double std_pos[],
                                 double velocity, double yaw_rate) {
+  // Gaussian noise generators
   std::default_random_engine gen;
+  std::normal_distribution<double> dist_x(0.0, std_pos[0]);
+  std::normal_distribution<double> dist_y(0.0, std_pos[1]);
+  std::normal_distribution<double> dist_th(0.0, std_pos[2]);
 
-  // TODO: Deal with division by zero!
-  if (abs(yaw_rate) < 0.001) {
-    std::cout << "Skipping DIVISION BY ZERO ON PREDICTION STEP!" << std::endl;
-    return;
-  }
+  if (abs(yaw_rate) < 0.000001) {
+    // prediction without rotation
+    for (auto& particle : particles) {
+      const double x0 = particle.x;
+      const double y0 = particle.y;
+      const double th0 = particle.theta;
 
-  for (auto& p : particles) {
-    const double x0 = p.x;
-    const double y0 = p.y;
-    const double th0 = p.theta;
+      // prediction
+      const double dth = 0.0;
+      const double dx = delta_t * velocity * cos(th0);
+      const double dy = delta_t * velocity * sin(th0);
 
-    // Update estimate
-    const double dth = yaw_rate * delta_t;
-    const double dx = velocity * (sin(th0 + dth) - sin(th0)) / yaw_rate;
-    const double dy = velocity * (cos(th0) - cos(th0 + dth)) / yaw_rate;
+      // update estimate
+      particle.x = x0 + dx + dist_x(gen);
+      particle.y = y0 + dy + dist_y(gen);
+      particle.theta = normalize_angle(th0 + dth + dist_th(gen));
+    }
+  } else {
+    // prediction with rotation
+    for (auto& particle : particles) {
+      const double x0 = particle.x;
+      const double y0 = particle.y;
+      const double th0 = particle.theta;
 
-    // Add noise with mean equals to the updated pose.
-    std::normal_distribution<double> dist_x(dx, std_pos[0]);
-    std::normal_distribution<double> dist_y(dy, std_pos[1]);
-    std::normal_distribution<double> dist_th(dth, std_pos[2]);
+      // prediction
+      const double dth = yaw_rate * delta_t;
+      const double dx = velocity * (sin(th0 + dth) - sin(th0)) / yaw_rate;
+      const double dy = velocity * (cos(th0) - cos(th0 + dth)) / yaw_rate;
 
-    p.x = x0 + dist_x(gen);
-    p.y = y0 + dist_y(gen);
-    p.theta = normalize_angle(th0 + dist_th(gen));
+      // Update estimate
+      particle.x = x0 + dx + dist_x(gen);
+      particle.y = y0 + dy + dist_y(gen);
+      particle.theta = normalize_angle(th0 + dth + dist_th(gen));
+    }
   }
 }
 
