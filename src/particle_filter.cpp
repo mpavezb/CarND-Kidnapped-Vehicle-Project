@@ -104,7 +104,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
   const double sigma_yy_inv = 1.0 / sigma_yy;
   const double gaussian_norm = 1.0 / (2 * M_PI * sigma_x * sigma_y);
 
-  double weight_sum = 0;
   for (auto& particle : particles) {
     const double p_x = particle.x;
     const double p_y = particle.y;
@@ -124,38 +123,62 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     // associate observations to given landmarks.
     dataAssociation(predicted_observations, map_observations);
 
+    std::vector<int> associations;
+    std::vector<double> sense_x;
+    std::vector<double> sense_y;
+
     // update weight using multivariate gaussian distribution
     particle.weight = 1;
-    for (const auto observation : map_observations) {
+    bool got_observations = false;
+    for (const auto& observation : map_observations) {
+      // debugging
+      associations.push_back(observation.id);
+      sense_x.push_back(observation.x);
+      sense_y.push_back(observation.y);
+
       // get associated landmark
-      const double landmark_id = observation.id;
-      const auto it = std::find_if(predicted_observations.begin(),
-                                   predicted_observations.end(),
-                                   [landmark_id](const LandmarkObs& landmark) {
-                                     return landmark_id == landmark.id;
-                                   });
-      if (it == predicted_observations.end()) {
-        std::cerr
-            << "Measurement expects landmark id (" << landmark_id
-            << "), but this is not present in the near observations vector."
-            << std::endl;
-        continue;
+      LandmarkObs landmark;
+      if (observation.id >= 0 &&
+          getLandmarkById(predicted_observations, observation.id, landmark)) {
+        // compute local weight
+        const double delta_x = observation.x - landmark.x;
+        const double delta_y = observation.y - landmark.y;
+        const double local_weight =
+            gaussian_norm * exp(-0.5 * (delta_x * delta_x * sigma_xx_inv +
+                                        delta_y * delta_y * sigma_yy_inv));
+        if (local_weight < 0.000000001) {
+          // std::cerr << "local weights is too small: " << local_weight
+          //           << std::endl;
+          continue;
+        }
+        got_observations = true;
+        particle.weight *= local_weight;
       }
-
-      // compute local weight
-      const double delta_x = observation.x - it->x;
-      const double delta_y = observation.y - it->y;
-      const double local_weight =
-          gaussian_norm * exp(-0.5 * (delta_x * delta_x * sigma_xx_inv +
-                                      delta_y * delta_y * sigma_yy_inv));
-      particle.weight *= local_weight;
     }
-    weight_sum += particle.weight;
+    if (!got_observations) {
+      particle.weight = 0;
+    }
+    SetAssociations(particle, associations, sense_x, sense_y);
   }
 
-  for (auto& particle : particles) {
-    particle.weight /= weight_sum;
+  // normalize
+  const double W =
+      std::accumulate(particles.begin(), particles.end(), 0.0,
+                      [](double r, const Particle& p) { return r + p.weight; });
+  if (W == 0) {
+    return;
   }
+  std::cout << "normalization factor is: " << W << std::endl;
+  for (auto& particle : particles) {
+    // std::cout << "w_i = " << particle.weight << std::endl;
+    particle.weight = particle.weight / W;
+    // std::cout << "alpha_i = " << particle.weight << std::endl;
+  }
+  double alpha_sum = 0;
+  for (const auto& particle : particles) {
+    alpha_sum += particle.weight;
+  }
+  std::cout << "sum of weights is: " << alpha_sum << std::endl;
 }
 
 void ParticleFilter::resample() {

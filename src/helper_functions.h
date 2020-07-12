@@ -11,6 +11,7 @@
 
 #include <math.h>
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -98,6 +99,20 @@ inline LandmarkObs transformObservationToMap(const LandmarkObs& observation,
   const double mx = cos(pth) * observation.x - sin(pth) * observation.y + px;
   const double my = sin(pth) * observation.x + cos(pth) * observation.y + py;
   return LandmarkObs(observation.id, mx, my);
+}
+
+inline bool getLandmarkById(const std::vector<LandmarkObs>& landmarks, int id,
+                            LandmarkObs& result) {
+  const auto it = std::find_if(
+      landmarks.begin(), landmarks.end(),
+      [id](const LandmarkObs& landmark) { return id == landmark.id; });
+  if (it == landmarks.end()) {
+    std::cerr << "Expected landmark with id (" << id
+              << "), but this is not available." << std::endl;
+    return false;
+  }
+  result = *it;
+  return true;
 }
 
 /**
