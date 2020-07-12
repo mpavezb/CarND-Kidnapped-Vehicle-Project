@@ -101,8 +101,17 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
                                    const Map& map_landmarks) {
   const double sigma_x = std_landmark[0];
   const double sigma_y = std_landmark[1];
+  const double sigma_xx = sigma_x * sigma_x;
+  const double sigma_yy = sigma_y * sigma_y;
 
-  for (auto particle : particles) {
+  // matrix is 2x2 and assumed to be diagonal (x and y independent)
+  const double determinant = sigma_xx * sigma_yy;
+  const double sigma_xx_inv = sigma_yy / determinant;
+  const double sigma_yy_inv = sigma_xx / determinant;
+  const double bottom = sqrt(2 * M_PI * determinant);
+
+  double weight_sum = 0;
+  for (auto& particle : particles) {
     const double p_x = particle.x;
     const double p_y = particle.y;
     const double p_th = particle.theta;
@@ -124,8 +133,37 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     dataAssociation(predicted_observations, map_observations);
 
     // update weight using multivariate gaussian distribution
-    // normalize weigths to [0, 1] range.
-    particle.weight = 0;
+    particle.weight = 1;
+    for (const auto observation : map_observations) {
+      // get associated landmark
+      const double landmark_id = observation.id;
+      const auto it = std::find_if(predicted_observations.begin(),
+                                   predicted_observations.end(),
+                                   [landmark_id](const LandmarkObs& landmark) {
+                                     return landmark_id == landmark.id;
+                                   });
+      if (it == predicted_observations.end()) {
+        std::cerr
+            << "Measurement expects landmark id (" << landmark_id
+            << "), but this is not present in the near observations vector."
+            << std::endl;
+        continue;
+      }
+
+      // compute local weight
+      const double delta_x = observation.x - it->x;
+      const double delta_y = observation.y - it->y;
+      const double local_weight =
+          exp(-0.5 * (delta_x * delta_x * sigma_xx_inv +
+                      delta_y * delta_y * sigma_yy_inv)) /
+          bottom;
+      particle.weight *= local_weight;
+    }
+    weight_sum += particle.weight;
+  }
+
+  for (auto& particle : particles) {
+    particle.weight /= weight_sum;
   }
 }
 
