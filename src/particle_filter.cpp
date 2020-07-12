@@ -55,7 +55,7 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
     return;
   }
 
-  for (auto p : particles) {
+  for (auto& p : particles) {
     const double x0 = p.x;
     const double y0 = p.y;
     const double th0 = p.theta;
@@ -80,12 +80,12 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
 
 void ParticleFilter::dataAssociation(vector<LandmarkObs> predicted,
                                      vector<LandmarkObs>& observations) {
-  for (auto observation : observations) {
+  for (auto& observation : observations) {
     double nearest_distance = std::numeric_limits<double>::max();
-    int nearest_id = 0;
+    int nearest_id = -1;
     const double ox = observation.x;
     const double oy = observation.y;
-    for (auto landmark : predicted) {
+    for (const auto landmark : predicted) {
       const double distance = dist(ox, oy, landmark.x, landmark.y);
       if (distance < nearest_distance) {
         nearest_distance = distance;
