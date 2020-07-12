@@ -118,6 +118,11 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
   const double sigma_yy_inv = 1.0 / sigma_yy;
   const double gaussian_norm = 1.0 / (2 * M_PI * sigma_x * sigma_y);
 
+  // will not update if there are no observations
+  if (observations.empty()) {
+    return;
+  }
+
   for (auto& particle : particles) {
     const double p_x = particle.x;
     const double p_y = particle.y;
@@ -126,6 +131,11 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
     // Create list of predicted landmarks in sensor range (/map frame).
     vector<LandmarkObs> predicted_observations =
         getNearLandmarks(p_x, p_y, sensor_range, map_landmarks);
+    if (predicted_observations.empty()) {
+      // dont update this particle and assign low weight;
+      particle.weight = 0.000001 / particles.size();
+      continue;
+    }
 
     // Transform observations from /car to /map frames.
     vector<LandmarkObs> map_observations;
@@ -143,7 +153,6 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
 
     // update weight using multivariate gaussian distribution
     particle.weight = 1;
-    bool got_observations = false;
     for (const auto& observation : map_observations) {
       // debugging
       associations.push_back(observation.id);
@@ -160,17 +169,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
         const double local_weight =
             gaussian_norm * exp(-0.5 * (delta_x * delta_x * sigma_xx_inv +
                                         delta_y * delta_y * sigma_yy_inv));
-        if (local_weight < 0.000000001) {
-          // std::cerr << "local weights is too small: " << local_weight
-          //           << std::endl;
-          continue;
-        }
-        got_observations = true;
         particle.weight *= local_weight;
       }
-    }
-    if (!got_observations) {
-      particle.weight = 0;
     }
     SetAssociations(particle, associations, sense_x, sense_y);
   }
@@ -179,20 +179,16 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
   const double W =
       std::accumulate(particles.begin(), particles.end(), 0.0,
                       [](double r, const Particle& p) { return r + p.weight; });
-  if (W == 0) {
+  if (W < 0.000000001) {
     return;
   }
-  std::cout << "normalization factor is: " << W << std::endl;
   for (auto& particle : particles) {
-    // std::cout << "w_i = " << particle.weight << std::endl;
     particle.weight = particle.weight / W;
-    // std::cout << "alpha_i = " << particle.weight << std::endl;
   }
   double alpha_sum = 0;
   for (const auto& particle : particles) {
     alpha_sum += particle.weight;
   }
-  std::cout << "sum of weights is: " << alpha_sum << std::endl;
 }
 
 void ParticleFilter::resample() {
