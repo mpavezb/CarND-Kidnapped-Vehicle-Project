@@ -39,9 +39,7 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
     p.sense_x.clear();
     p.sense_y.clear();
     particles.emplace_back(p);
-    // weights.push_back(1.0);
   }
-  num_particles = particles.size();
   is_initialized = true;
 }
 

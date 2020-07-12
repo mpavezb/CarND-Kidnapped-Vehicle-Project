@@ -28,8 +28,7 @@ struct Particle {
 class ParticleFilter {
  public:
   // Constructor
-  // @param num_particles Number of particles
-  ParticleFilter() : num_particles(0), is_initialized(false) {}
+  ParticleFilter() : is_initialized(false) {}
 
   // Destructor
   ~ParticleFilter() {}
@@ -110,14 +109,8 @@ class ParticleFilter {
   std::vector<Particle> particles;
 
  private:
-  // Number of particles to draw
-  int num_particles;
-
   // Flag, if filter is initialized
   bool is_initialized;
-
-  // Vector of weights of all particles
-  std::vector<double> weights;
 };
 
 #endif  // PARTICLE_FILTER_H_
