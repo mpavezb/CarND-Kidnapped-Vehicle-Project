@@ -61,6 +61,11 @@ inline double dist(double x1, double y1, double x2, double y2) {
   return sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1));
 }
 
+inline double normalize_angle(const double value) {
+  double a = fmod(value + M_PI, 2 * M_PI);
+  return a >= 0 ? (a - M_PI) : (a + M_PI);
+}
+
 /**
  * Computes a vector of LandmarkObs based only on near landmarks to the vehicle.
  * @param (x, y) Particle x and y position.

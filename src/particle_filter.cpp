@@ -28,12 +28,13 @@ void ParticleFilter::init(double x, double y, double theta, double std[]) {
   std::normal_distribution<double> dist_y(y, std[1]);
   std::normal_distribution<double> dist_th(theta, std[2]);
 
-  for (int i = 0; i < 1000; ++i) {
+  const int number_of_particles = 200;
+  for (int i = 1; i <= number_of_particles; ++i) {
     Particle p{};
     p.id = i;
     p.x = dist_x(gen);
     p.y = dist_y(gen);
-    p.theta = dist_th(gen);
+    p.theta = normalize_angle(dist_th(gen));
     p.weight = 1;
     p.associations.clear();
     p.sense_x.clear();
@@ -59,20 +60,18 @@ void ParticleFilter::prediction(double delta_t, double std_pos[],
     const double th0 = p.theta;
 
     // Update estimate
-    const double th1 = th0 + yaw_rate * delta_t;
-    const double dx = velocity * (sin(th1) - sin(th0)) / yaw_rate;
-    const double dy = velocity * (cos(th0) - cos(th1)) / yaw_rate;
-    p.theta = th0 + th1;
-    p.x = x0 + dx;
-    p.y = y0 + dy;
+    const double dth = yaw_rate * delta_t;
+    const double dx = velocity * (sin(th0 + dth) - sin(th0)) / yaw_rate;
+    const double dy = velocity * (cos(th0) - cos(th0 + dth)) / yaw_rate;
 
     // Add noise with mean equals to the updated pose.
     std::normal_distribution<double> dist_x(dx, std_pos[0]);
     std::normal_distribution<double> dist_y(dy, std_pos[1]);
-    std::normal_distribution<double> dist_th(th1, std_pos[2]);
-    p.x += dist_x(gen);
-    p.y += dist_y(gen);
-    p.theta += dist_th(gen);
+    std::normal_distribution<double> dist_th(dth, std_pos[2]);
+
+    p.x = x0 + dist_x(gen);
+    p.y = y0 + dist_y(gen);
+    p.theta = normalize_angle(th0 + dist_th(gen));
   }
 }
 
