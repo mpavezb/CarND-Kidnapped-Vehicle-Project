@@ -101,12 +101,9 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
   const double sigma_y = std_landmark[1];
   const double sigma_xx = sigma_x * sigma_x;
   const double sigma_yy = sigma_y * sigma_y;
-
-  // matrix is 2x2 and assumed to be diagonal (x and y independent)
-  const double determinant = sigma_xx * sigma_yy;
-  const double sigma_xx_inv = sigma_yy / determinant;
-  const double sigma_yy_inv = sigma_xx / determinant;
-  const double bottom = sqrt(2 * M_PI * determinant);
+  const double sigma_xx_inv = 1.0 / sigma_xx;
+  const double sigma_yy_inv = 1.0 / sigma_yy;
+  const double gaussian_norm = 1.0 / (2 * M_PI * sigma_x * sigma_y);
 
   double weight_sum = 0;
   for (auto& particle : particles) {
@@ -152,9 +149,8 @@ void ParticleFilter::updateWeights(double sensor_range, double std_landmark[],
       const double delta_x = observation.x - it->x;
       const double delta_y = observation.y - it->y;
       const double local_weight =
-          exp(-0.5 * (delta_x * delta_x * sigma_xx_inv +
-                      delta_y * delta_y * sigma_yy_inv)) /
-          bottom;
+          gaussian_norm * exp(-0.5 * (delta_x * delta_x * sigma_xx_inv +
+                                      delta_y * delta_y * sigma_yy_inv));
       particle.weight *= local_weight;
     }
     weight_sum += particle.weight;
